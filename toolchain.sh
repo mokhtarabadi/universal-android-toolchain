@@ -108,10 +108,8 @@ export_autoconf_variables() {
       export CFLAGS="$CFLAGS -std=gnu11"
       export CXXFLAGS="$CXXFLAGS -std=c++11"
 
-      if [ "$SHARED" == "ON" ]; then
-            export LDFLAGS="-c++_shared"
-      else
-            export LDFLAGS="-static-libstdc++"
+      if [ "$SHARED" == "OFF" ]; then
+            export LDFLAGS="$LDFLAGS -static-libstdc++"
       fi
 }
 
