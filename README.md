@@ -31,4 +31,7 @@ For example run `./sample.sh x86 29` to build most recent version of curl for An
 
 See [sample](./sample.sh)
 
+# Notes
+If you want to include more than one shared libraries in your Android(Java/Kotlin) project, you must use tell toolchain to use shared libc++ instead static one by set `ANDROID_USE_SHARED_LIBC=ON` environment variable and alse add `-DANDROID_STL=c++_shared` to cmake arguments in build.gradle
+
 Enjoy!

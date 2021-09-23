@@ -47,6 +47,12 @@ if [ -n "$2" ]; then
       API=$2
 fi
 
+# need use shared lib++
+SHARED=OFF
+if [ -n "$ANDROID_USE_SHARED_LIBC" ]; then
+      SHARED=$ANDROID_USE_SHARED_LIBC
+fi
+
 case $1 in
 arm)
       TRIPLE=arm-linux-androideabi
@@ -101,7 +107,12 @@ export_autoconf_variables() {
 
       export CFLAGS="$CFLAGS -std=gnu11"
       export CXXFLAGS="$CXXFLAGS -std=c++11"
-      export LDFLAGS="-static-libstdc++"
+
+      if [ "$SHARED" == "ON" ]; then
+            export LDFLAGS="-c++_shared"
+      else
+            export LDFLAGS="-static-libstdc++"
+      fi
 }
 
 android_make_command() {
@@ -125,23 +136,34 @@ android_autoconf_command() {
 
 # base cmake command for android
 android_cmake_command() {
-      "$CMAKE"/bin/cmake \
-            -DCMAKE_BUILD_TYPE="Release" \
-            -DCMAKE_CXX_FLAGS="$CXXFLAGS" \
-            -DCMAKE_C_FLAGS="$CFLAGS" \
-            -DCMAKE_TOOLCHAIN_FILE="$NDK/build/cmake/android.toolchain.cmake" \
-            -DANDROID_STL="c++_static" \
-            -DANDROID_ABI=$ABI \
-            -DANDROID_NDK="$NDK" \
-            -DANDROID_PLATFORM="android-$API" \
-            -DCMAKE_ANDROID_ARCH_ABI=$ABI \
-            -DCMAKE_ANDROID_NDK="$NDK" \
-            -DCMAKE_FIND_ROOT_PATH="$SYSROOT" \
-            -DCMAKE_MAKE_PROGRAM="$CMAKE/bin/ninja" \
-            -DCMAKE_SYSTEM_NAME="Android" \
-            -DCMAKE_SYSTEM_VERSION="$API" \
-            -GNinja \
-            "$@"
+      PARAMS=(
+            "-DCMAKE_BUILD_TYPE=Release"
+            "-DCMAKE_CXX_FLAGS=$CXXFLAGS"
+            "-DCMAKE_C_FLAGS=$CFLAGS"
+            "-DCMAKE_TOOLCHAIN_FILE=$NDK/build/cmake/android.toolchain.cmake"
+            "-DANDROID_ABI=$ABI"
+            "-DANDROID_NDK=$NDK"
+            "-DANDROID_PLATFORM=android-$API"
+            "-DCMAKE_ANDROID_ARCH_ABI=$ABI"
+            "-DCMAKE_ANDROID_NDK=$NDK"
+            "-DCMAKE_FIND_ROOT_PATH=$SYSROOT"
+            "-DCMAKE_MAKE_PROGRAM=$CMAKE/bin/ninja"
+            "-DCMAKE_SYSTEM_NAME=Android"
+            "-DCMAKE_SYSTEM_VERSION=$API"
+            "-GNinja"
+      )
+
+      if [ "$SHARED" == "ON" ]; then
+            PARAMS+=(
+                  "-DANDROID_STL=c++_shared"
+            )
+      else
+            PARAMS+=(
+                  "-DANDROID_STL=c++_static"
+            )
+      fi
+
+      "$CMAKE"/bin/cmake "${PARAMS[@]}" "$@"
 }
 
 # use cmake version of openssl for easy integration with android_cmake_command
