@@ -230,7 +230,30 @@ build_mbedtls() {
 
 # build libevent with openssl/mbedtls support[openssl=ON, mbedtls=ON]
 build_libevent() {
-      # build parameters
+      # check need build mbedtls or openssl support
+      if [ "$1" == "ON" ]; then
+            echo "Build openssl"
+            build_openssl
+      fi
+
+      if [ "$2" == "ON" ]; then
+            echo "Build mbedtls"
+            build_mbedtls
+      fi
+
+      # download
+      cd "$THIRDPARTY" || return
+      if [ ! -d libevent-028385f685585b4b247bdd4acae3cd12de2b4da4 ]; then
+            curl -L https://github.com/libevent/libevent/archive/028385f685585b4b247bdd4acae3cd12de2b4da4.zip -o libevent.zip
+            unzip libevent.zip
+      fi
+      cd libevent-028385f685585b4b247bdd4acae3cd12de2b4da4 || return
+
+      # clean
+      rm -rf build && mkdir build
+      cd build || return
+
+      # build
       PARAMS=(
             "-DEVENT__DISABLE_SAMPLES=ON"
             "-DEVENT__DISABLE_TESTS=ON"
@@ -240,10 +263,7 @@ build_libevent() {
             "-DEVENT__DISABLE_THREAD_SUPPORT=ON"
       )
 
-      # check need build mbedtls or openssl support
       if [ "$1" == "ON" ]; then
-            echo "Build openssl"
-            build_openssl
             PARAMS+=(
                   "-DEVENT__DISABLE_OPENSSL=OFF"
             )
@@ -254,8 +274,6 @@ build_libevent() {
       fi
 
       if [ "$2" == "ON" ]; then
-            echo "Build mbedtls"
-            build_mbedtls
             PARAMS+=(
                   "-DEVENT__DISABLE_MBEDTLS=OFF"
                   "-DMBEDTLS_USE_STATIC_LIBS=ON"
@@ -265,18 +283,6 @@ build_libevent() {
                   "-DEVENT__DISABLE_MBEDTLS=ON"
             )
       fi
-
-      # download
-      cd "$THIRDPARTY" || return
-      if [ ! -d libevent-master ]; then
-            curl -L https://github.com/libevent/libevent/archive/refs/heads/master.zip -o libevent.zip
-            unzip libevent.zip
-      fi
-      cd libevent-master || return
-
-      # clean
-      rm -rf build && mkdir build
-      cd build || return
 
       android_cmake_command "${PARAMS[@]}" ..
 
