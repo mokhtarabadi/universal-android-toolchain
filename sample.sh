@@ -13,5 +13,6 @@ cd curl-7.79.1/
 rm -rf build && mkdir build && cd build
 android_cmake_command ..
 "$CMAKE/bin/cmake" --build . --config Release # CMAKE is set in toolchain script
+"$CMAKE/bin/cmake" --build . --target install
 
-$STRIP -s lib/libcurl.so -o $OUTPUT_DIR/libcurl.so # STRIP and OUTPUT_DIR is set in toolchain script
+$STRIP -s $SYSROOT/usr/lib/libcurl.so -o $OUTPUT_DIR/libcurl.so # STRIP and OUTPUT_DIR is set in toolchain script

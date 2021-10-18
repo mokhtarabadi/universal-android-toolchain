@@ -86,22 +86,29 @@ if [ "$1" == "arm" ]; then
       TARGET=armv7a-linux-androideabi
 fi
 
+# change current directory
 CURRENT_DIR=$(pwd)
+if [ -n "$WORKING_DIRECTORY" ]; then
+      CURRENT_DIR=$WORKING_DIRECTORY
+fi
+
 THIRDPARTY=$CURRENT_DIR/3rd-party
 SYSROOT=$CURRENT_DIR/sysroot/$ABI
 OUTPUT_DIR=$CURRENT_DIR/output/$ABI
 
 # create needed directories
-[ ! -d "$THIRDPARTY" ] && mkdir "$THIRDPARTY"
-[ ! -d "$SYSROOT" ] && mkdir -p "$SYSROOT/"{lib,include}
+[ ! -d "$THIRDPARTY" ] && mkdir -p "$THIRDPARTY"
+[ ! -d "$SYSROOT" ] && mkdir -p "$SYSROOT/usr/"{lib,include}
 [ ! -d "$OUTPUT_DIR" ] && mkdir -p "$OUTPUT_DIR"
 
 export_autoconf_variables() {
+      export DESTDIR="$SYSROOT"
+
       export AR=$TOOLCHAIN/bin/llvm-ar
       export CC=$TOOLCHAIN/bin/$TARGET$API-clang
       export AS=$CC
       export CXX=$TOOLCHAIN/bin/$TARGET$API-clang++
-      export LD=$TOOLCHAIN/bin/ld
+      export LD=$TOOLCHAIN/bin/$TRIPLE-ld
       export RANLIB=$TOOLCHAIN/bin/llvm-ranlib
       export STRIP=$TOOLCHAIN/bin/llvm-strip
 
@@ -129,7 +136,8 @@ android_make_command() {
 android_autoconf_command() {
       ./configure \
             --host $TARGET \
-            "$@"
+            --prefix "/usr"
+      "$@"
 }
 
 # base cmake command for android
@@ -148,6 +156,7 @@ android_cmake_command() {
             "-DCMAKE_MAKE_PROGRAM=$CMAKE/bin/ninja"
             "-DCMAKE_SYSTEM_NAME=Android"
             "-DCMAKE_SYSTEM_VERSION=$API"
+            "-DCMAKE_INSTALL_PREFIX=/usr"
             "-GNinja"
       )
 
@@ -188,9 +197,11 @@ build_openssl() {
       "$CMAKE/bin/cmake" --build . --config Release
 
       # install
-      cp crypto/libcrypto_1_1.a "$SYSROOT/lib/libcrypto.a"
-      cp ssl/libssl_1_1.a "$SYSROOT/lib/libssl.a"
-      cp -r include/openssl "$SYSROOT/include"
+      "$CMAKE/bin/cmake" --build . --target install
+
+      # workaround
+      mv $SYSROOT/usr/lib/libcrypto_1_1.a $SYSROOT/usr/lib/libcrypto.a
+      mv $SYSROOT/usr/lib/libssl_1_1.a $SYSROOT/usr/lib/libssl.a
 
       cd $CURRENT_DIR
 }
@@ -221,9 +232,7 @@ build_mbedtls() {
       "$CMAKE/bin/cmake" --build . --config Release
 
       # install
-      cp library/{libmbedcrypto,libmbedtls,libmbedx509}.a "$SYSROOT/lib"
-      cd ..
-      cp -r include/mbedtls "$SYSROOT/include"
+      "$CMAKE/bin/cmake" --build . --target install
 
       cd $CURRENT_DIR
 }
@@ -289,10 +298,7 @@ build_libevent() {
       "$CMAKE/bin/cmake" --build . --config Release
 
       # install
-      cp lib/*.a "$SYSROOT/lib"
-      cp -r include/* "$SYSROOT/include"
-      cd ..
-      cp -r include/* "$SYSROOT/include"
+      "$CMAKE/bin/cmake" --build . --target install
 
       cd $CURRENT_DIR
 }
