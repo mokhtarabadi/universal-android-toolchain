@@ -10,7 +10,7 @@ if [ ! -d "$SDK" ]; then
 fi
 
 # get android ndk path
-NDK=$SDK/ndk/21.4.7075529
+NDK=$SDK/ndk/25.2.9519653
 [ -n "$ANDROID_NDK_HOME" ] && NDK="$ANDROID_NDK_HOME"
 
 if [ ! -d "$NDK" ]; then
@@ -19,7 +19,7 @@ if [ ! -d "$NDK" ]; then
 fi
 
 # get pre-installed ndk cmake
-CMAKE=$SDK/cmake/3.10.2.4988404
+CMAKE=$SDK/cmake/3.22.1
 [ -n "$ANDROID_CMAKE_HOME" ] && CMAKE="$ANDROID_CMAKE_HOME"
 
 if [ ! -d "$CMAKE" ]; then
@@ -27,13 +27,26 @@ if [ ! -d "$CMAKE" ]; then
       exit 1
 fi
 
+# check gcc command works mean found or not
+command -v gcc >/dev/null 2>&1 || {
+      echo >&2 "I require gcc but it's not installed.  Aborting."
+      exit 1
+}
+
+# get build triple
+BUILD_TRIPLE=$(gcc -dumpmachine)
+
 # get host
 HOST=$(tr "[:upper:]" "[:lower:]" <<<"$(uname -s)-$(uname -m)")
 
 TOOLCHAIN="$NDK/toolchains/llvm/prebuilt/$HOST"
 
 show_help() {
-      echo -e "Usage: $0 [arm] [api]\narm is mandatory and must be one of arm, arm64, x86, x64\napi is optinal and default is 28"
+      cat <<EOF
+Usage: $0 arch [api]
+  arch      The architecture to build for (arm, arm64, x86, x64)
+  api       The Android API level to target (default: 28)
+EOF
 }
 
 if [ -z "${1+x}" ]; then
@@ -118,26 +131,32 @@ export_autoconf_variables() {
       if [ "$SHARED" == "OFF" ]; then
             export LDFLAGS="$LDFLAGS -static-libstdc++"
       fi
+
+      export CFLAGS="$CFLAGS --sysroot=$TOOLCHAIN/sysroot -I$TOOLCHAIN/sysroot/usr/include"
+      export CXXFLAGS="$CXXFLAGS --sysroot=$TOOLCHAIN/sysroot"
+      export LDFLAGS="$LDFLAGS --sysroot=$TOOLCHAIN/sysroot -L$TOOLCHAIN/sysroot/usr/lib"
 }
 
 android_make_command() {
       make \
-            CC=$CC \
-            CXX=$CXX \
-            LD=$LD \
-            AS=$AS \
-            STRIP=$STRIP \
-            AR=$AR \
-            RANLIB=$RANLIB \
+            CC="$CC" \
+            CXX="$CXX" \
+            LD="$LD" \
+            AS="$AS" \
+            STRIP="$STRIP" \
+            AR="$AR" \
+            RANLIB="$RANLIB" \
+            DESTDIR="$DESTDIR" \
             "$@"
 }
 
 # base autoconf command for cross-compile for android
 android_autoconf_command() {
       ./configure \
-            --host $TARGET \
-            --prefix "/usr"
-      "$@"
+            --host "$TARGET" \
+            --build "$BUILD_TRIPLE" \
+            --prefix "/usr" \
+            "$@"
 }
 
 # base cmake command for android
@@ -146,13 +165,14 @@ android_cmake_command() {
             "-DCMAKE_BUILD_TYPE=Release"
             "-DCMAKE_CXX_FLAGS=$CXXFLAGS"
             "-DCMAKE_C_FLAGS=$CFLAGS"
+            "-DCMAKE_EXE_LINKER_FLAGS=$LDFLAGS"
             "-DCMAKE_TOOLCHAIN_FILE=$NDK/build/cmake/android.toolchain.cmake"
             "-DANDROID_ABI=$ABI"
             "-DANDROID_NDK=$NDK"
             "-DANDROID_PLATFORM=android-$API"
             "-DCMAKE_ANDROID_ARCH_ABI=$ABI"
             "-DCMAKE_ANDROID_NDK=$NDK"
-            "-DCMAKE_FIND_ROOT_PATH=$SYSROOT"
+            "-DCMAKE_FIND_ROOT_PATH=$TOOLCHAIN/sysroot;$SYSROOT"
             "-DCMAKE_MAKE_PROGRAM=$CMAKE/bin/ninja"
             "-DCMAKE_SYSTEM_NAME=Android"
             "-DCMAKE_SYSTEM_VERSION=$API"
@@ -177,6 +197,7 @@ android_cmake_command() {
 build_openssl() {
       # download
       cd "$THIRDPARTY" || return
+
       if [ ! -d openssl-cmake-1.1.1k-20210430 ]; then
             curl -L -O https://github.com/janbar/openssl-cmake/archive/refs/tags/1.1.1k-20210430.tar.gz
             tar -xvf 1.1.1k-20210430.tar.gz
@@ -189,8 +210,8 @@ build_openssl() {
 
       # build
       android_cmake_command \
-            -DDSO_NONE=ON \
-            -DBUILD_SHARED_LIBS=OFF \
+            -DDSO_NONE=OFF \
+            -DBUILD_SHARED_LIBS="$SHARED" \
             -DWITH_APPS=OFF \
             ..
 
@@ -200,15 +221,21 @@ build_openssl() {
       "$CMAKE/bin/cmake" --build . --target install
 
       # workaround
-      mv $SYSROOT/usr/lib/libcrypto_1_1.a $SYSROOT/usr/lib/libcrypto.a
-      mv $SYSROOT/usr/lib/libssl_1_1.a $SYSROOT/usr/lib/libssl.a
+      mv "$SYSROOT/usr/lib/libcrypto_1_1.a" "$SYSROOT/usr/lib/libcrypto.a"
+      mv "$SYSROOT/usr/lib/libssl_1_1.a" "$SYSROOT/usr/lib/libssl.a"
 
-      cd $CURRENT_DIR
+      if [ "$SHARED" == "ON" ]; then
+            mv "$SYSROOT/usr/lib/libcrypto_1_1.so" "$SYSROOT/usr/lib/libcrypto.so"
+            mv "$SYSROOT/usr/lib/libssl_1_1.so" "$SYSROOT/usr/lib/libssl.so"
+      fi
+
+      cd "$CURRENT_DIR" || exit 1
 }
 
 build_mbedtls() {
       # download
       cd "$THIRDPARTY" || return
+
       if [ ! -d mbedtls-2.26.0 ]; then
             curl -L -O https://github.com/ARMmbed/mbedtls/archive/refs/tags/v2.26.0.tar.gz
             tar -xvf v2.26.0.tar.gz
@@ -219,22 +246,34 @@ build_mbedtls() {
       rm -rf build && mkdir build
       cd build || return
 
+      PARAMS=(
+            "-DENABLE_ZLIB_SUPPORT=ON"
+            "-DENABLE_TESTING=OFF"
+            "-DENABLE_PROGRAMS=OFF"
+            "-DLINK_WITH_PTHREAD=OFF"
+      )
+
+      if [ "$SHARED" == "ON" ]; then
+            PARAMS+=(
+                  "-DUSE_SHARED_MBEDTLS_LIBRARY=ON"
+                  "-DUSE_STATIC_MBEDTLS_LIBRARY=OFF"
+            )
+      else
+            PARAMS+=(
+                  "-DUSE_SHARED_MBEDTLS_LIBRARY=OFF"
+                  "-DUSE_STATIC_MBEDTLS_LIBRARY=ON"
+            )
+      fi
+
       # build
-      android_cmake_command \
-            -DENABLE_ZLIB_SUPPORT=ON \
-            -DENABLE_TESTING=OFF \
-            -DENABLE_PROGRAMS=OFF \
-            -DLINK_WITH_PTHREAD=OFF \
-            -DUSE_SHARED_MBEDTLS_LIBRARY=OFF \
-            -DUSE_STATIC_MBEDTLS_LIBRARY=ON \
-            ..
+      android_cmake_command "${PARAMS[@]}" ..
 
       "$CMAKE/bin/cmake" --build . --config Release
 
       # install
       "$CMAKE/bin/cmake" --build . --target install
 
-      cd $CURRENT_DIR
+      cd "$CURRENT_DIR" || exit 1
 }
 
 # build libevent with openssl/mbedtls support[openssl=ON, mbedtls=ON]
@@ -252,6 +291,7 @@ build_libevent() {
 
       # download
       cd "$THIRDPARTY" || return
+
       if [ ! -d libevent-028385f685585b4b247bdd4acae3cd12de2b4da4 ]; then
             curl -L https://github.com/libevent/libevent/archive/028385f685585b4b247bdd4acae3cd12de2b4da4.zip -o libevent.zip
             unzip libevent.zip
@@ -267,10 +307,21 @@ build_libevent() {
             "-DEVENT__DISABLE_SAMPLES=ON"
             "-DEVENT__DISABLE_TESTS=ON"
             "-DEVENT__DOXYGEN=OFF"
-            "-DEVENT__LIBRARY_TYPE=STATIC"
             "-DEVENT__DISABLE_BENCHMARK=ON"
             "-DEVENT__DISABLE_THREAD_SUPPORT=ON"
       )
+
+      if [ "$SHARED" == "ON" ]; then
+            PARAMS+=(
+                  "-DEVENT__LIBRARY_TYPE=SHARED"
+
+            )
+      else
+            PARAMS+=(
+                  "-DEVENT__LIBRARY_TYPE=STATIC"
+
+            )
+      fi
 
       if [ "$1" == "ON" ]; then
             PARAMS+=(
@@ -285,11 +336,15 @@ build_libevent() {
       if [ "$2" == "ON" ]; then
             PARAMS+=(
                   "-DEVENT__DISABLE_MBEDTLS=OFF"
-                  "-DMBEDTLS_USE_STATIC_LIBS=ON"
             )
       else
             PARAMS+=(
                   "-DEVENT__DISABLE_MBEDTLS=ON"
+            )
+      fi
+
+      if [ "$SHARED" == "ON" ] && [ "$2" == "ON" ]; then
+            PARAMS+=("-DMBEDTLS_USE_STATIC_LIBS=ON"
             )
       fi
 
@@ -300,7 +355,7 @@ build_libevent() {
       # install
       "$CMAKE/bin/cmake" --build . --target install
 
-      cd $CURRENT_DIR
+      cd "$CURRENT_DIR" || exit 1
 }
 
 export_autoconf_variables
