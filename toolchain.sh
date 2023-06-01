@@ -114,7 +114,7 @@ OUTPUT_DIR=$CURRENT_DIR/output/$ABI
 [ ! -d "$SYSROOT" ] && mkdir -p "$SYSROOT/usr/"{lib,include}
 [ ! -d "$OUTPUT_DIR" ] && mkdir -p "$OUTPUT_DIR"
 
-export_autoconf_variables() {
+function export_autoconf_variables() {
       export DESTDIR="$SYSROOT"
 
       export AR=$TOOLCHAIN/bin/llvm-ar
@@ -137,7 +137,7 @@ export_autoconf_variables() {
       export LDFLAGS="$LDFLAGS --sysroot=$TOOLCHAIN/sysroot -L$TOOLCHAIN/sysroot/usr/lib"
 }
 
-android_make_command() {
+function android_make_command() {
       make \
             CC="$CC" \
             CXX="$CXX" \
@@ -151,8 +151,11 @@ android_make_command() {
 }
 
 # base autoconf command for cross-compile for android
-android_autoconf_command() {
-      ./configure \
+function android_autoconf_command() {
+      local configure_path="$1"
+      shift
+
+      "$configure_path"/configure \
             --host "$TARGET" \
             --build "$BUILD_TRIPLE" \
             --prefix "/usr" \
@@ -160,8 +163,8 @@ android_autoconf_command() {
 }
 
 # base cmake command for android
-android_cmake_command() {
-      PARAMS=(
+function android_cmake_command() {
+      local PARAMS=(
             "-DCMAKE_BUILD_TYPE=Release"
             "-DCMAKE_CXX_FLAGS=$CXXFLAGS"
             "-DCMAKE_C_FLAGS=$CFLAGS"
@@ -172,7 +175,7 @@ android_cmake_command() {
             "-DANDROID_PLATFORM=android-$API"
             "-DCMAKE_ANDROID_ARCH_ABI=$ABI"
             "-DCMAKE_ANDROID_NDK=$NDK"
-            "-DCMAKE_FIND_ROOT_PATH=$TOOLCHAIN/sysroot;$SYSROOT"
+            "-DCMAKE_FIND_ROOT_PATH=$TOOLCHAIN/sysroot"
             "-DCMAKE_MAKE_PROGRAM=$CMAKE/bin/ninja"
             "-DCMAKE_SYSTEM_NAME=Android"
             "-DCMAKE_SYSTEM_VERSION=$API"
@@ -194,7 +197,7 @@ android_cmake_command() {
 }
 
 # use cmake version of openssl for easy integration with android_cmake_command
-build_openssl() {
+function build_openssl() {
       # download
       cd "$THIRDPARTY" || return
 
@@ -232,7 +235,7 @@ build_openssl() {
       cd "$CURRENT_DIR" || exit 1
 }
 
-build_mbedtls() {
+function build_mbedtls() {
       # download
       cd "$THIRDPARTY" || return
 
@@ -246,7 +249,7 @@ build_mbedtls() {
       rm -rf build && mkdir build
       cd build || return
 
-      PARAMS=(
+      local PARAMS=(
             "-DENABLE_ZLIB_SUPPORT=ON"
             "-DENABLE_TESTING=OFF"
             "-DENABLE_PROGRAMS=OFF"
@@ -277,7 +280,7 @@ build_mbedtls() {
 }
 
 # build libevent with openssl/mbedtls support[openssl=ON, mbedtls=ON]
-build_libevent() {
+function build_libevent() {
       # check need build mbedtls or openssl support
       if [ "$1" == "ON" ]; then
             echo "Build openssl"
@@ -303,7 +306,7 @@ build_libevent() {
       cd build || return
 
       # build
-      PARAMS=(
+      local PARAMS=(
             "-DEVENT__DISABLE_SAMPLES=ON"
             "-DEVENT__DISABLE_TESTS=ON"
             "-DEVENT__DOXYGEN=OFF"
@@ -311,21 +314,28 @@ build_libevent() {
             "-DEVENT__DISABLE_THREAD_SUPPORT=ON"
       )
 
+      local LIB_POSTFIX=""
       if [ "$SHARED" == "ON" ]; then
             PARAMS+=(
                   "-DEVENT__LIBRARY_TYPE=SHARED"
 
             )
+            LIB_POSTFIX=".so"
       else
             PARAMS+=(
                   "-DEVENT__LIBRARY_TYPE=STATIC"
 
             )
+            LIB_POSTFIX=".a"
       fi
 
       if [ "$1" == "ON" ]; then
             PARAMS+=(
                   "-DEVENT__DISABLE_OPENSSL=OFF"
+                  "-DOPENSSL_INCLUDE_DIR=$SYSROOT/usr/include"
+                  "-DOPENSSL_ROOT_DIR=$SYSROOT/usr"
+                  "-DOPENSSL_CRYPTO_LIBRARY=$SYSROOT/usr/lib/libcrypto$LIB_POSTFIX"
+                  "-DOPENSSL_SSL_LIBRARY=$SYSROOT/usr/lib/libssl$LIB_POSTFIX"
             )
       else
             PARAMS+=(
@@ -336,6 +346,11 @@ build_libevent() {
       if [ "$2" == "ON" ]; then
             PARAMS+=(
                   "-DEVENT__DISABLE_MBEDTLS=OFF"
+                  "-DMBEDTLS_INCLUDE_DIR=$SYSROOT/usr/include"
+                  "-DMBEDTLS_ROOT_DIR=$SYSROOT/usr"
+                  "-DMBEDTLS_LIBRARY=$SYSROOT/usr/lib/libmbedtls$LIB_POSTFIX"
+                  "-DMBEDTLS_CRYPTO_LIBRARY=$SYSROOT/usr/lib/libmbedcrypto$LIB_POSTFIX"
+                  "-DMBEDTLS_X509_LIBRARY=$SYSROOT/usr/lib/libmbedx509$LIB_POSTFIX"
             )
       else
             PARAMS+=(

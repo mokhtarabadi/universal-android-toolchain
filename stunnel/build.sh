@@ -5,7 +5,7 @@ export ANDROID_USE_SHARED_LIBC=OFF
 . ../toolchain.sh "$@" # this will get arm and api from command line options
 
 # build openssl
-build_openssl
+build_libevent ON ON
 
 # download stunnel source code
 if [ ! -d "source/stunnel-5.69" ]; then
@@ -17,8 +17,12 @@ if [ ! -d "source/stunnel-5.69" ]; then
 fi
 cd source/stunnel-5.69 || return
 
+# clean
+rm -rf build && mkdir build
+cd build || return
+
 # build
-android_autoconf_command \
+android_autoconf_command .. \
     --with-ssl="$SYSROOT/usr" \
     --enable-static \
     --disable-libwrap \
