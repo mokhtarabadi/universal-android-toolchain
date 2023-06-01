@@ -221,12 +221,12 @@ build_openssl() {
       "$CMAKE/bin/cmake" --build . --target install
 
       # workaround
-      mv "$SYSROOT/usr/lib/libcrypto_1_1.a" "$SYSROOT/usr/lib/libcrypto.a"
-      mv "$SYSROOT/usr/lib/libssl_1_1.a" "$SYSROOT/usr/lib/libssl.a"
-
       if [ "$SHARED" == "ON" ]; then
             mv "$SYSROOT/usr/lib/libcrypto_1_1.so" "$SYSROOT/usr/lib/libcrypto.so"
             mv "$SYSROOT/usr/lib/libssl_1_1.so" "$SYSROOT/usr/lib/libssl.so"
+      else
+            mv "$SYSROOT/usr/lib/libcrypto_1_1.a" "$SYSROOT/usr/lib/libcrypto.a"
+            mv "$SYSROOT/usr/lib/libssl_1_1.a" "$SYSROOT/usr/lib/libssl.a"
       fi
 
       cd "$CURRENT_DIR" || exit 1
