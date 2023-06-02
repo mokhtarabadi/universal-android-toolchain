@@ -27,6 +27,9 @@ if [ ! -d "$CMAKE" ]; then
       exit 1
 fi
 
+# need to openssl
+export ANDROID_NDK_ROOT=$NDK
+
 # get build triple
 BUILD_TRIPLE="$(uname -m)-$(uname -s | tr '[:upper:]' '[:lower:]')-gnu"
 
@@ -88,6 +91,8 @@ x64)
       ;;
 esac
 
+ARCH=$1
+
 TARGET=$TRIPLE
 if [ "$1" == "arm" ]; then
       TARGET=armv7a-linux-androideabi
@@ -107,6 +112,9 @@ OUTPUT_DIR=$CURRENT_DIR/output/$ABI
 [ ! -d "$THIRDPARTY" ] && mkdir -p "$THIRDPARTY"
 [ ! -d "$SYSROOT" ] && mkdir -p "$SYSROOT/usr/"{lib,include}
 [ ! -d "$OUTPUT_DIR" ] && mkdir -p "$OUTPUT_DIR"
+
+# export toolchain to path
+export PATH="$TOOLCHAIN/bin:$PATH"
 
 function export_autoconf_variables() {
       export DESTDIR="$SYSROOT"
@@ -197,36 +205,40 @@ function build_openssl() {
       # download
       cd "$THIRDPARTY" || return
 
-      if [ ! -d openssl-cmake-1.1.1t-20230216 ]; then
-            curl -L -O https://github.com/janbar/openssl-cmake/archive/refs/tags/1.1.1t-20230216.tar.gz
-            tar -xvf 1.1.1t-20230216.tar.gz
+      if [ ! -d "openssl-3.1.1" ]; then
+            curl -L -O https://github.com/openssl/openssl/releases/download/openssl-3.1.1/openssl-3.1.1.tar.gz
+            tar -xvf openssl-3.1.1.tar.gz
       fi
-      cd openssl-cmake-1.1.1t-20230216 || return
+      cd openssl-3.1.1 || return
 
       # clean
       rm -rf build && mkdir build
       cd build || return
 
-      # build
-      android_cmake_command \
-            -DDSO_NONE=ON \
-            -DBUILD_SHARED_LIBS="$SHARED" \
-            -DWITH_APPS=OFF \
-            ..
+      OPENSSL_CONFIG_TYPE="android-"
 
-      "$CMAKE/bin/cmake" --build . --config Release
+      # switch $ARCH with arm arm64 x86 x64
+      case $ARCH in
+      arm)
+            OPENSSL_CONFIG_TYPE+="armeabi"
+            ;;
+      arm64)
+            OPENSSL_CONFIG_TYPE+="arm64"
+            ;;
+      x86)
+            OPENSSL_CONFIG_TYPE+="x86"
+            ;;
+      x64)
+            OPENSSL_CONFIG_TYPE+="x86_64"
+            ;;
+      esac
 
-      # install
-      "$CMAKE/bin/cmake" --build . --target install
+      # configure
+      ../Configure --prefix=/usr $OPENSSL_CONFIG_TYPE no-asm no-shared no-ssl2 no-ssl3 no-comp no-hw no-engine
 
-      # workaround
-      if [ "$SHARED" == "ON" ]; then
-            mv "$SYSROOT/usr/lib/libcrypto_1_1.so" "$SYSROOT/usr/lib/libcrypto.so"
-            mv "$SYSROOT/usr/lib/libssl_1_1.so" "$SYSROOT/usr/lib/libssl.so"
-      else
-            mv "$SYSROOT/usr/lib/libcrypto_1_1.a" "$SYSROOT/usr/lib/libcrypto.a"
-            mv "$SYSROOT/usr/lib/libssl_1_1.a" "$SYSROOT/usr/lib/libssl.a"
-      fi
+      # build and install
+      android_make_command -j9
+      android_make_command -j9 install_sw
 
       cd "$CURRENT_DIR" || exit 1
 }
@@ -235,11 +247,11 @@ function build_mbedtls() {
       # download
       cd "$THIRDPARTY" || return
 
-      if [ ! -d mbedtls-2.26.0 ]; then
-            curl -L -O https://github.com/ARMmbed/mbedtls/archive/refs/tags/v2.26.0.tar.gz
-            tar -xvf v2.26.0.tar.gz
+      if [ ! -d mbedtls-3.4.0 ]; then
+            curl -L -O https://github.com/ARMmbed/mbedtls/archive/refs/tags/v3.4.0.tar.gz
+            tar -xvf v3.4.0.tar.gz
       fi
-      cd mbedtls-2.26.0 || return
+      cd mbedtls-3.4.0 || return
 
       # clean
       rm -rf build && mkdir build
