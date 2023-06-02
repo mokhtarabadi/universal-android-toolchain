@@ -234,7 +234,7 @@ function build_openssl() {
       esac
 
       # configure
-      ../Configure --prefix=/usr $OPENSSL_CONFIG_TYPE no-asm no-shared no-ssl2 no-ssl3 no-comp no-hw no-engine
+      ../Configure --prefix=/usr $OPENSSL_CONFIG_TYPE no-asm no-shared no-ssl2 no-ssl3 no-comp no-hw no-engine -D__ANDROID_API__="$API"
 
       # build and install
       android_make_command -j9
@@ -247,11 +247,11 @@ function build_mbedtls() {
       # download
       cd "$THIRDPARTY" || return
 
-      if [ ! -d mbedtls-3.4.0 ]; then
-            curl -L -O https://github.com/ARMmbed/mbedtls/archive/refs/tags/v3.4.0.tar.gz
-            tar -xvf v3.4.0.tar.gz
+      if [ ! -d mbedtls-2.28.3 ]; then
+            curl -L -O https://github.com/ARMmbed/mbedtls/archive/refs/tags/v2.28.3.tar.gz
+            tar -xvf v2.28.3.tar.gz
       fi
-      cd mbedtls-3.4.0 || return
+      cd mbedtls-2.28.3 || return
 
       # clean
       rm -rf build && mkdir build
