@@ -27,14 +27,8 @@ if [ ! -d "$CMAKE" ]; then
       exit 1
 fi
 
-# check gcc command works mean found or not
-command -v gcc >/dev/null 2>&1 || {
-      echo >&2 "I require gcc but it's not installed.  Aborting."
-      exit 1
-}
-
 # get build triple
-BUILD_TRIPLE=$(gcc -dumpmachine)
+BUILD_TRIPLE="$(uname -m)-$(uname -s | tr '[:upper:]' '[:lower:]')-gnu"
 
 # get host
 HOST=$(tr "[:upper:]" "[:lower:]" <<<"$(uname -s)-$(uname -m)")
@@ -166,6 +160,8 @@ function android_autoconf_command() {
 function android_cmake_command() {
       local PARAMS=(
             "-DCMAKE_BUILD_TYPE=Release"
+            "-DCMAKE_C_COMPILER=$CC"
+            "-DCMAKE_CXX_COMPILER=$CXX"
             "-DCMAKE_CXX_FLAGS=$CXXFLAGS"
             "-DCMAKE_C_FLAGS=$CFLAGS"
             "-DCMAKE_EXE_LINKER_FLAGS=$LDFLAGS"

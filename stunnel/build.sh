@@ -1,7 +1,12 @@
 #!/bin/bash
 
 export ANDROID_USE_SHARED_LIBC=OFF
+WORKING_DIRECTORY="$(pwd)"
+export WORKING_DIRECTORY
 
+export API=21
+
+# shellcheck source=../toolchain.sh
 . ../toolchain.sh "$@" # this will get arm and api from command line options
 
 # build openssl
@@ -35,3 +40,4 @@ android_make_command install-exec
 
 # install it
 mv "$SYSROOT/usr/bin/stunnel" "$OUTPUT_DIR/libstunnel.so"
+$STRIP -s "$OUTPUT_DIR/libstunnel.so"
