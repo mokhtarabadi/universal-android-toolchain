@@ -197,11 +197,11 @@ function build_openssl() {
       # download
       cd "$THIRDPARTY" || return
 
-      if [ ! -d openssl-cmake-1.1.1k-20210430 ]; then
-            curl -L -O https://github.com/janbar/openssl-cmake/archive/refs/tags/1.1.1k-20210430.tar.gz
-            tar -xvf 1.1.1k-20210430.tar.gz
+      if [ ! -d openssl-cmake-1.1.1t-20230216 ]; then
+            curl -L -O https://github.com/janbar/openssl-cmake/archive/refs/tags/1.1.1t-20230216.tar.gz
+            tar -xvf 1.1.1t-20230216.tar.gz
       fi
-      cd openssl-cmake-1.1.1k-20210430 || return
+      cd openssl-cmake-1.1.1t-20230216 || return
 
       # clean
       rm -rf build && mkdir build
@@ -209,7 +209,7 @@ function build_openssl() {
 
       # build
       android_cmake_command \
-            -DDSO_NONE=OFF \
+            -DDSO_NONE=ON \
             -DBUILD_SHARED_LIBS="$SHARED" \
             -DWITH_APPS=OFF \
             ..
