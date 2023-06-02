@@ -7,10 +7,10 @@ export WORKING_DIRECTORY
 export API=21
 
 # shellcheck source=../toolchain.sh
-. ../toolchain.sh "$@" # this will get arm and api from command line options
+. ../toolchain.sh "$@" # this will get arch and api level from command args
 
 # build openssl
-build_libevent ON ON
+build_openssl
 
 # download stunnel source code
 if [ ! -d "source/stunnel-5.69" ]; then
