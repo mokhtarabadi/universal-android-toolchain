@@ -201,15 +201,16 @@ function android_cmake_command() {
 }
 
 # use cmake version of openssl for easy integration with android_cmake_command
+OPENSSL_VERSION="3.1.1"
 function build_openssl() {
       # download
       cd "$THIRDPARTY" || return
 
-      if [ ! -d "openssl-3.1.1" ]; then
-            curl -L -O https://github.com/openssl/openssl/releases/download/openssl-3.1.1/openssl-3.1.1.tar.gz
-            tar -xvf openssl-3.1.1.tar.gz
+      if [ ! -d "openssl-$OPENSSL_VERSION" ]; then
+            curl -L -O https://www.openssl.org/source/openssl-$OPENSSL_VERSION.tar.gz
+            tar -xvf openssl-$OPENSSL_VERSION.tar.gz
       fi
-      cd openssl-3.1.1 || return
+      cd openssl-$OPENSSL_VERSION || return
 
       # clean
       rm -rf build && mkdir build
@@ -243,15 +244,16 @@ function build_openssl() {
       cd "$CURRENT_DIR" || exit 1
 }
 
+MBEDTLS_VERSION="2.28.3"
 function build_mbedtls() {
       # download
       cd "$THIRDPARTY" || return
 
-      if [ ! -d mbedtls-2.28.3 ]; then
-            curl -L -O https://github.com/ARMmbed/mbedtls/archive/refs/tags/v2.28.3.tar.gz
-            tar -xvf v2.28.3.tar.gz
+      if [ ! -d mbedtls-$MBEDTLS_VERSION ]; then
+            curl -L -O https://github.com/ARMmbed/mbedtls/archive/refs/tags/v$MBEDTLS_VERSION.tar.gz
+            tar -xvf v$MBEDTLS_VERSION.tar.gz
       fi
-      cd mbedtls-2.28.3 || return
+      cd mbedtls-$MBEDTLS_VERSION || return
 
       # clean
       rm -rf build && mkdir build

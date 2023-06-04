@@ -10,6 +10,7 @@ export API=21
 . ../toolchain.sh "$@" # this will get arch and api level from command args
 
 # build openssl
+export OPENSSL_VERSION="1.1.1u"
 build_openssl
 
 # download stunnel source code
