@@ -1,0 +1,9 @@
+{
+    "files.associations": {
+        "*.embeddedhtml": "html",
+        "openssl-compat.h": "c",
+        "evp.h": "c",
+        "*.inc": "c",
+        "getrrsetbyname.h": "c"
+    }
+}
