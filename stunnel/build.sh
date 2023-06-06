@@ -14,6 +14,8 @@ function build_openssl_() {
 }
 
 function build_stunnel() {
+  cd "$WORKING_DIRECTORY" || return
+
   # download stunnel source code
   if [ ! -d "source/stunnel-5.69" ]; then
     mkdir -p source

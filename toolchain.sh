@@ -104,12 +104,12 @@ if [ -n "$WORKING_DIRECTORY" ]; then
   CURRENT_DIR=$WORKING_DIRECTORY
 fi
 
-THIRDPARTY=$CURRENT_DIR/3rd-party
+THIRD_PARTY=$CURRENT_DIR/3rd-party
 SYSROOT=$CURRENT_DIR/sysroot/$ABI
 OUTPUT_DIR=$CURRENT_DIR/output/$ABI
 
 # create needed directories
-[ ! -d "$THIRDPARTY" ] && mkdir -p "$THIRDPARTY"
+[ ! -d "$THIRD_PARTY" ] && mkdir -p "$THIRD_PARTY"
 [ ! -d "$SYSROOT" ] && mkdir -p "$SYSROOT/usr/"{lib,include}
 [ ! -d "$OUTPUT_DIR" ] && mkdir -p "$OUTPUT_DIR"
 
@@ -211,7 +211,7 @@ function android_cmake_command() {
 OPENSSL_VERSION="3.1.1"
 function build_openssl() {
   # download
-  cd "$THIRDPARTY" || return
+  cd "$THIRD_PARTY" || return
 
   if [ ! -d "openssl-$OPENSSL_VERSION" ]; then
     curl -L -O https://www.openssl.org/source/openssl-$OPENSSL_VERSION.tar.gz
@@ -265,7 +265,7 @@ function build_openssl() {
 MBEDTLS_VERSION="2.28.3"
 function build_mbedtls() {
   # download
-  cd "$THIRDPARTY" || return
+  cd "$THIRD_PARTY" || return
 
   if [ ! -d mbedtls-$MBEDTLS_VERSION ]; then
     curl -L -O https://github.com/ARMmbed/mbedtls/archive/refs/tags/v$MBEDTLS_VERSION.tar.gz
@@ -321,7 +321,7 @@ function build_libevent() {
   fi
 
   # download
-  cd "$THIRDPARTY" || return
+  cd "$THIRD_PARTY" || return
 
   if [ ! -d libevent-028385f685585b4b247bdd4acae3cd12de2b4da4 ]; then
     curl -L https://github.com/libevent/libevent/archive/028385f685585b4b247bdd4acae3cd12de2b4da4.zip -o libevent.zip
