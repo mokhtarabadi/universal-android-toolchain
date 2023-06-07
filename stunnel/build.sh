@@ -39,13 +39,12 @@ function build_stunnel() {
     --disable-largefile
 
   android_make_command -j9
-  android_make_command install-exec
+
+  # install it
+  mv "src/stunnel" "$OUTPUT_DIR/libstunnel.so"
+  $STRIP -s "$OUTPUT_DIR/libstunnel.so"
 }
 
 # build
 build_openssl_
 build_stunnel
-
-# install it
-mv "$SYSROOT/usr/bin/stunnel" "$OUTPUT_DIR/libstunnel.so"
-$STRIP -s "$OUTPUT_DIR/libstunnel.so"
