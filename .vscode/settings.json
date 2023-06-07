@@ -4,6 +4,7 @@
         "openssl-compat.h": "c",
         "evp.h": "c",
         "*.inc": "c",
-        "getrrsetbyname.h": "c"
+        "getrrsetbyname.h": "c",
+        "includes.h": "c"
     }
 }

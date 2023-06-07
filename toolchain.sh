@@ -131,7 +131,7 @@ function export_autoconf_variables() {
   export CXXFLAGS="$CXXFLAGS -std=c++11"
 
   if [ "$SHARED" == "OFF" ]; then
-    export LDFLAGS="$LDFLAGS -static-libstdc++"
+    export LDFLAGS="$LDFLAGS -static-libstdc++ -Wno-unused-command-line-argument"
   fi
 
   export CFLAGS="$CFLAGS --sysroot=$SYSROOT -I$SYSROOT/usr/include"
@@ -155,6 +155,7 @@ function android_make_command() {
     AR="$AR" \
     RANLIB="$RANLIB" \
     DESTDIR="$DESTDIR" \
+    PREFIX="/usr" \
     "$@"
 }
 
@@ -166,8 +167,8 @@ function android_autoconf_command() {
   "$configure_path"/configure \
     --host="$TARGET" \
     --build="$BUILD_TRIPLE" \
-    --prefix="/usr" \
     --with-sysroot="$SYSROOT" \
+    --prefix="/usr" \
     "$@"
 }
 
